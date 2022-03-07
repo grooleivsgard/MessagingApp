@@ -44,8 +44,9 @@ class Server(threading.Thread):
             data, addr = regSocket.recvfrom(2048) #Receive the client's name 
             client = Client(addr[0], addr[1], data.decode(self.FORMAT)) #Creat a Client object from name and address
             self.clients.append(client) #Place the client in the Server's array
+            self.clientsOnline = ""
             for i in range(len(self.clients)):
-                self.clientsOnline = self.clients[i].name
+                self.clientsOnline += self.clients[i].name
             print(client.name + " is connected.")
             regSocket.sendto(self.MENU.encode(self.FORMAT), addr)
     
