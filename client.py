@@ -7,15 +7,22 @@ def main():
     serverName = "192.168.0.106"
     registerPort = 12345
     receivePort = 12346
+    displayPort = 12348
     clientSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     name = input("Enter your name:\n")
     clientSocket.sendto(name.encode(FORMAT), (serverName, registerPort))
+    print(clientSocket.recv(1024).decode(FORMAT))
     while True:
-        message = input("Type a message to someone:\n")
-        if message == "Quit":
+        command = input("\n")
+        if command == "Quit":
             break
+        if command == "d":
+            clientSocket.sendto(command.encode(FORMAT), (serverName, displayPort))
+            clients = clientSocket.recv(1024)
+            clients = clients.decode(FORMAT)
+            print(clients)
         else:
-            clientSocket.sendto(message.encode(FORMAT), (serverName, receivePort))
+            clientSocket.sendto(command.encode(FORMAT), (serverName, receivePort))
             newMsg = clientSocket.recv(1024)
             print(newMsg.decode(FORMAT))
     clientSocket.close()
