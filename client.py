@@ -7,7 +7,7 @@ def main():
     serverName = "192.168.0.106"
     registerPort = 12345
     receivePort = 12346
-    displayPort = 12348
+    #displayPort = 12348
     disconnectPort = 12349
     clientSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     name = input("Enter your name:\n")
@@ -17,10 +17,10 @@ def main():
     while True:
         command = input(prompt)
         if command == "Quit":
-            clientSocket.sendto(command.encode(FORMAT), (serverName, disconnectPort))
+            clientSocket.sendto(command.encode(FORMAT), (serverName, receivePort))
             break
-        if command == "d":
-            clientSocket.sendto(command.encode(FORMAT), (serverName, displayPort))
+        elif command == "d":
+            clientSocket.sendto(command.encode(FORMAT), (serverName, receivePort))
             clients = clientSocket.recv(1024)
             clients = clients.decode(FORMAT)
             print(clients)
