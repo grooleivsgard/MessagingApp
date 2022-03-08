@@ -6,12 +6,13 @@ import queue
 class Server(threading.Thread):
 
     #Initialises the server object
-    def __init__(self, host, port1, port2, port3, port4):
+    def __init__(self, host, port1, port2, port3, port4, port5):
         self.host = host
         self.registerPort = port1
         self.receivePort = port2
         self.sendPort = port3
         self.dsplPort = port4
+        self.discPort = port5
         self.FORMAT = 'utf-8'
         self.MENU = "Press 'd' to display online users"
         self.clientsOnline = ""
@@ -32,6 +33,8 @@ class Server(threading.Thread):
         recvThread.start()
         sendThread = threading.Thread(target=self.sendMsg) #Starts the thread which sends messages to clients
         sendThread.start()
+        discThread = threading.Thread(target=self.onDisconnect) #Starts the thread which disconnects clients
+        discThread.start()
 
     #Registers the client's name and address (IP + port number)
     def register(self):
@@ -43,10 +46,8 @@ class Server(threading.Thread):
         while True: #Wait for clients to register
             data, addr = regSocket.recvfrom(2048) #Receive the client's name 
             client = Client(addr[0], addr[1], data.decode(self.FORMAT)) #Creat a Client object from name and address
+            client.is_connected = True
             self.clients.append(client) #Place the client in the Server's array
-            self.clientsOnline = ""
-            for i in range(len(self.clients)):
-                self.clientsOnline += self.clients[i].name
             print(client.name + " is connected.")
             regSocket.sendto(self.MENU.encode(self.FORMAT), addr)
     
@@ -60,6 +61,10 @@ class Server(threading.Thread):
             data, addr = dsplSocket.recvfrom(2048) #Receive message
             command = data.decode(self.FORMAT)
             if command == 'd':
+                self.clientsOnline = "Users Online:\n"
+                for i in range(len(self.clients)):
+                    if self.clients[i].is_connected:
+                        self.clientsOnline = self.clientsOnline + self.clients[i].name + '\n'
                 dsplSocket.sendto(self.clientsOnline.encode(self.FORMAT), addr)
             else:
                 continue
@@ -78,9 +83,9 @@ class Server(threading.Thread):
 
     #Sends a message to a client (For now just returns to the client who sent it)
     def sendMsg(self):
-        sendsocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sendSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         try:
-            sendsocket.bind((self.host, self.sendPort))
+            sendSocket.bind((self.host, self.sendPort))
         except socket.error as e:
             print(str(e))            
         while True:
@@ -88,8 +93,21 @@ class Server(threading.Thread):
             addr = self.recpQueue.get() #Retrieve the recipient
             data = data.decode(self.FORMAT)
             message = f"You said: {data}" #Placeholder reply to show code executed correctly
-            sendsocket.sendto(message.encode(self.FORMAT), addr)
+            sendSocket.sendto(message.encode(self.FORMAT), addr)
 
+    def onDisconnect(self):
+        discSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            discSocket.bind((self.host, self.discPort))
+        except socket.error as e:
+            print(str(e))
+        while True:
+            data, addr = discSocket.recvfrom(1024) #Receive notification that a client has left the server
+            for i in range(len(self.clients)):
+                if self.clients[i].port == addr[1]:
+                    self.clients[i].is_connected = False
+                    j = i
+            print(f"{self.clients[j].name} has disconnected")
 
 class Client:
 
@@ -98,6 +116,7 @@ class Client:
         self.port = port
         self.FORMAT = 'utf-8'
         self.name = name
+        self.is_connected = False
 
-server = Server("192.168.0.106", 12345, 12346, 12347, 12348)
+server = Server("196.47.233.1", 12345, 12346, 12347, 12348, 12349)
 server.run()
