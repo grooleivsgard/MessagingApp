@@ -4,7 +4,7 @@ import threading
     
 def main():
     FORMAT = 'utf-8'
-    serverName = "196.47.233.1"
+    serverName = "192.168.0.106"
     registerPort = 12345
     receivePort = 12346
     displayPort = 12348

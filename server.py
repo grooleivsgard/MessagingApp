@@ -45,7 +45,7 @@ class Server(threading.Thread):
             print(str(e))
         while True: #Wait for clients to register
             data, addr = regSocket.recvfrom(2048) #Receive the client's name 
-            client = Client(addr[0], addr[1], data.decode(self.FORMAT)) #Creat a Client object from name and address
+            client = Client(addr, data.decode(self.FORMAT)) #Creat a Client object from name and address
             client.is_connected = True
             self.clients.append(client) #Place the client in the Server's array
             print(client.name + " is connected.")
@@ -104,19 +104,18 @@ class Server(threading.Thread):
         while True:
             data, addr = discSocket.recvfrom(1024) #Receive notification that a client has left the server
             for i in range(len(self.clients)):
-                if self.clients[i].port == addr[1]:
+                if self.clients[i].addr == addr:
                     self.clients[i].is_connected = False
                     j = i
             print(f"{self.clients[j].name} has disconnected")
 
 class Client:
 
-    def __init__(self, IP, port, name):
-        self.IP = IP
-        self.port = port
-        self.FORMAT = 'utf-8'
+    def __init__(self, addr, name):
+        self.addr = addr
         self.name = name
+        self.FORMAT = 'utf-8'
         self.is_connected = False
 
-server = Server("196.47.233.1", 12345, 12346, 12347, 12348, 12349)
+server = Server("192.168.0.106", 12345, 12346, 12347, 12348, 12349)
 server.run()
