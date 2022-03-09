@@ -13,7 +13,7 @@ class Server(threading.Thread):
         self.receivePort = port2
         self.sendPort = port3
         self.FORMAT = 'utf-8'
-        self.MENU = "\nType 'd' to display online users\nType 'Send to' to select recipient\nType 'Create' to make a group\nType 'MENU' to view options"
+        self.MENU = "\nType 'd' to display online users\nType 'Send to' to select recipient\nType 'Create' to make a group\nType 'MENU' to view options\nType 'Quit' to exit"
         self.clientsOnline = ""
         self.clients = [] #List of clients connected to the server as Client objects (see below)
         self.groups = []
@@ -100,10 +100,11 @@ class Server(threading.Thread):
 
                 for i in range(len(self.clients)):
                     if self.clients[i].name == rcvrName:
-                        found == True                      
+                        found = True                    
                         recipients.append(rcvrName)
-                        recipients.append(name) 
-                
+                        recipients.append(name)
+
+                #print(found)
                 if found == True:
                     received = rcvrName + ";" + name + ":" + received
                     for i in range(len(self.clients)):
@@ -118,7 +119,7 @@ class Server(threading.Thread):
                             recipients = self.groups[j].members
                             for k in range(len(recipients)):
                                 if recipients[k] == name:
-                                    found == True
+                                    found = True
                                     received = rcvrName + ";" + name + ":" + received
                                     for i in range(len(self.clients)):
                                         for k in range(len(recipients)):
@@ -131,6 +132,7 @@ class Server(threading.Thread):
                 
                 
             elif command == 'Create':
+                membersTemp = []
                 members = []
                 members.append(name)
                 grpName  = ""
@@ -140,11 +142,25 @@ class Server(threading.Thread):
                 for i in range(len(received)):
                     if (received[i] == ";") or (received[i] == ":"):
                         #print(received[pos:i])
-                        members.append(received[pos:i])
+                        membersTemp.append(received[pos:i])
                         pos = i+1                        
                         if received[i] == ":":
                             grpName = received[i+1:len(received)]
                             break
+                
+                found = False
+                notFound = []
+                for i in range(len(membersTemp)):
+                    for j in range(len(self.clients)):
+                        if membersTemp[i] == self.clients[j].name:
+                            found = True
+                            members.append(membersTemp[i])
+
+                    if found == False:
+                        notFound.append(membersTemp[i])
+                    else:
+                        found = False
+                    
                 
                 #for i in range(len(members)):
                 # print(members[i])
@@ -158,7 +174,16 @@ class Server(threading.Thread):
                         if self.clients[i].name == members[j]:
                             #print(members[j])
                             if members[j] == name:
-                                message = "You" + message
+                                if len(notFound) > 0:
+                                    line = ""
+                                    for k in range(len(notFound)):
+                                        if k == 0:
+                                            line = notFound[k]
+                                        else:
+                                            line = line + ", " + notFound[k]
+                                    message = "You" + message + "\nCould not add: " + line
+                                else:
+                                    message = "You" + message
                             else:
                                 message = name + message
 

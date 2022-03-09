@@ -1,6 +1,7 @@
 #CSC3002F Assignment 1: Client
 import socket
 import threading
+import os
 from time import sleep
 from tkinter import CENTER
     
@@ -12,14 +13,16 @@ def main():
     #displayPort = 12348
     disconnectPort = 12349
     clientSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    name = input("Enter your name:\n")
+    name = input("Enter your name:\n")    
     clientSocket.sendto(name.encode(FORMAT), (serverName, registerPort))
  
     print(clientSocket.recv(1024).decode(FORMAT))
     prompt = ""
     while True:
         command = input(prompt)
-        if command == "Quit":
+        if command == "MENU":
+            print("\nType 'd' to display online users\nType 'Send to' to select recipient\nType 'Create' to make a group\nType 'MENU' to view options\nType 'Quit' to exit")
+        elif command == "Quit":
             clientSocket.sendto(command.encode(FORMAT), (serverName, receivePort))
             break
         elif command == "d":
@@ -39,10 +42,11 @@ def main():
             #print(newmsg, "hi")
             title = ""
             pos = 0
+            
             for i in range(len(newmsg)):
                 if newmsg[i] == ";":
-                    title = newmsg[0:i]
-                    print("\n" + title)
+                    title = 'Chat: ' + newmsg[0:i]
+                    print("\n" + title.center(os.get_terminal_size().columns))
                     pos = i
                 elif newmsg[i] == ":":
                     senderName = newmsg[pos+1:i]                    
