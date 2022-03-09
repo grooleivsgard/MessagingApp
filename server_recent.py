@@ -13,9 +13,10 @@ class Server(threading.Thread):
         self.receivePort = port2
         self.sendPort = port3
         self.FORMAT = 'utf-8'
-        self.MENU = "Type 'd' to display online users or 'Send to' to select recipient(s)"
+        self.MENU = "\nType 'd' to display online users\nType 'Send to' to select recipient\nType 'Create' to make a group\nType 'MENU' to view options"
         self.clientsOnline = ""
         self.clients = [] #List of clients connected to the server as Client objects (see below)
+        self.groups = []
         self.dataQueue = queue.Queue() #FIFO queue of data sent my clients
         self.recpQueue = queue.Queue() #FIFO queue of recipients where data should be sent
 
@@ -63,45 +64,107 @@ class Server(threading.Thread):
         while True:
             command, addr = recSocket.recvfrom(2048) #Receive command
             command = command.decode(self.FORMAT)
+            for i in range(len(command)):
+                if command[i] == ";":
+                    received = command[i+1:len(command)]
+                    command = command[0:i]
+                    break           
+            
+
+            for i in range(len(self.clients)):
+                    if self.clients[i].addr == addr:
+                        name = self.clients[i].name
+                        
+
+            #print(command)
+            #print(received)
             if command == 'd':
                 clients = self.displayClients()
                 recSocket.sendto(clients, addr)
             elif command == 'Quit':
                 print(self.onDisconnect(addr))
-                # elif command == 'Send to':
-                #    found = False
-                #   for i in range(len(self.clients)):
-                #      if self.clients[i].name == command:
-                #         msg = "Recipient found"
-                #        recSocket.sendto(msg, addr)
-                #       found = True
-                #if found == False:
-                #   msg = "Recipient not found"
-                #  recSocket.sendto(msg, addr)
-            else:
-                recipients = []
+                
+            elif command == 'Send to':
+                found = False                
+                recipients = []                              
+                rcvrName = ""
+                #print(received)
+
+                for j in range(len(received)):
+                    if received[j] == ":": 
+                        rcvrName = received[0:j] 
+                        received = received[j+1:len(received)]
+                        break
+
+                #print(rcvrName)     
 
                 for i in range(len(self.clients)):
-                    if self.clients[i].addr == addr:
-                        name = self.clients[i].name
-                        recipients.append(name)
+                    if self.clients[i].name == rcvrName:
+                        found == True                      
+                        recipients.append(rcvrName)
+                        recipients.append(name) 
+                
+                if found == True:
+                    received = rcvrName + ";" + name + ":" + received
+                    for i in range(len(self.clients)):
+                        for j in range(len(recipients)):
+                            if self.clients[i].name == recipients[j]:
+                                self.dataQueue.put(received) #Places data on queue
+                                self.recpQueue.put(self.clients[i].addr) #Places repicient on queue
+                else:
+                    for j in range(len(self.groups)):
+                        #print(self.groups[j].name, rcvrName)
+                        if self.groups[j].name == rcvrName:
+                            recipients = self.groups[j].members
+                            for k in range(len(recipients)):
+                                if recipients[k] == name:
+                                    found == True
+                                    received = rcvrName + ";" + name + ":" + received
+                                    for i in range(len(self.clients)):
+                                        for k in range(len(recipients)):
+                                            if self.clients[i].name == recipients[k]:
+                                                self.dataQueue.put(received) #Places data on queue
+                                                self.recpQueue.put(self.clients[i].addr) #Places repicient on queue
+                if found == False:
+                    self.dataQueue.put("Contact or group not found")
+                    self.recpQueue.put(addr)                    
+                
+                
+            elif command == 'Create':
+                members = []
+                members.append(name)
+                grpName  = ""
+                pos = 0
+                #print(received)
 
-                for j in range(len(command)):
-                    #print(command[j])
-                    if (command[j] == ";") or (command[j] == ":"):                        
-                        recipients.append(command[0:j])                        
-                        if command[j] == ":":
-                            command = command[j+1:len(command)]
+                for i in range(len(received)):
+                    if (received[i] == ";") or (received[i] == ":"):
+                        #print(received[pos:i])
+                        members.append(received[pos:i])
+                        pos = i+1                        
+                        if received[i] == ":":
+                            grpName = received[i+1:len(received)]
                             break
                 
-                command = name + ":" + command
-                for i in range(len(self.clients)):
-                    for j in range(len(recipients)):
-                        if self.clients[i].name == recipients[j]:
-                            self.dataQueue.put(command) #Places data on queue
-                            self.recpQueue.put(self.clients[i].addr) #Places repicient on queue
+                #for i in range(len(members)):
+                # print(members[i])
 
-                
+                group = Group(members, grpName)
+                self.groups.append(group)
+                message = " created group " +"\"" + group.name + "\""
+                #print(message)
+                for i in range(len(self.clients)):
+                    for j in range(len(members)):
+                        if self.clients[i].name == members[j]:
+                            #print(members[j])
+                            if members[j] == name:
+                                message = "You" + message
+                            else:
+                                message = name + message
+
+                            self.dataQueue.put(message) #Places data on queue
+                            self.recpQueue.put(self.clients[i].addr) #Places repicient on queue   
+
 
     #Sends a message to a client (For now just returns to the client who sent it)
     def sendMsg(self):
@@ -130,6 +193,11 @@ class Client:
         self.name = name
         self.FORMAT = 'utf-8'
         self.is_connected = False
+
+class Group:
+    def __init__(self, members, name):
+        self.members = members
+        self.name = name
 
 server = Server("192.168.0.56", 12345, 12346, 12347)
 server.run()
