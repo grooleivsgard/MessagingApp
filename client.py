@@ -156,7 +156,7 @@ def main(host, port):
 
     text_input.pack(fill=tk.BOTH, expand=True)
     text_input.bind("<Return>", lambda x: client.send(text_input))
-    text_input.insert(0, "Write your message here.")
+    text_input.insert(0, "Skriv her.")
 
     btn_send = tk.Button(
         master=window,
