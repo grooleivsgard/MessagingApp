@@ -28,7 +28,16 @@ class Client(threading.Thread):
         name = input("Enter your name:\n")    
         self.clientSocket.sendto(name.encode(self.FORMAT), (self.serverName, self.registerPort))
     
-        print(self.clientSocket.recv(1024).decode(self.FORMAT))
+        recvd = self.clientSocket.recv(1024).decode(self.FORMAT)
+        if recvd == "taken":
+            while recvd == "taken":
+                print("Username taken, please enter a new one")
+                name = input("Enter your name:\n")    
+                self.clientSocket.sendto(name.encode(self.FORMAT), (self.serverName, self.registerPort))    
+                recvd = self.clientSocket.recv(1024).decode(self.FORMAT)
+
+        print(recvd)
+
         prompt = ""
         listenThread = threading.Thread(target=self.listen) #Starts the thread that registers the clients on the server
         listenThread.start()

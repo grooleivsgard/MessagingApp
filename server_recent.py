@@ -44,11 +44,22 @@ class Server(threading.Thread):
         while True: #Wait for clients to register
             data, addr = regSocket.recvfrom(2048) #Receive the client's name             
             messages = []
-            client = Client(addr, data.decode(self.FORMAT), messages) #Create a Client object from name and address
-            client.is_connected = True
-            self.clients.append(client) #Place the client in the Server's array
-            print(client.name + " is connected.")
-            regSocket.sendto(self.MENU.encode(self.FORMAT), addr)
+            name = data.decode(self.FORMAT)
+
+            bTaken = False
+            for i in range(len(self.clients)):      #check if username is already taken
+                if self.clients[i].name == name:
+                    bTaken = True
+
+            if bTaken == True:
+                message = "taken"
+                regSocket.sendto(message.encode(self.FORMAT), addr)
+            else:                
+                client = Client(addr, data.decode(self.FORMAT), messages) #Create a Client object from name and address
+                client.is_connected = True
+                self.clients.append(client) #Place the client in the Server's array
+                print(client.name + " is connected.")
+                regSocket.sendto(self.MENU.encode(self.FORMAT), addr)
     
     #method to send a list of users
     def displayClients(self):
