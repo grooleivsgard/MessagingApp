@@ -68,10 +68,31 @@ class Server(threading.Thread):
                 recSocket.sendto(clients, addr)
             elif command == 'q':
                 print(self.onDisconnect(addr))
+
             elif command == 'declined': #Client declines chat
+                chatter = Client('1', 1, 'Null')
                 for i in range(len(self.clients)):
                     if self.clients[i].addr == addr:
                         self.clients[i].initiateChat = False
+                        chatterName = self.clients[i].chatter
+                        self.clients[i].chatter = ''
+                for j in range(len(self.clients)):
+                    if self.clients[j].name == chatterName:
+                        chatter = self.clients[j]
+                recSocket.sendto("declined".encode(self.FORMAT), chatter.addr)
+
+            elif command == 'accepted': #Client accepts chat
+                chatter = Client('1', 1, 'Null')
+                for i in range(len(self.clients)):
+                    if self.clients[i].addr == addr:
+                        self.clients[i].initiateChat = False
+                        chatterName = self.clients[i].chatter
+                        self.clients[i].chatter = ''
+                for j in range(len(self.clients)):
+                    if self.clients[j].name == chatterName:
+                        chatter = self.clients[j]
+                recSocket.sendto("accepted".encode(self.FORMAT), chatter.addr)
+
             elif command == 'c': #Client wants to start chat
                 data, addr = recSocket.recvfrom(1024)
                 for j in range(len(self.clients)): #Find client initiating chat
@@ -87,11 +108,14 @@ class Server(threading.Thread):
                         break
 
     def onDisconnect(self, addr):
+        client = Client('1', 1, "null")
         for i in range(len(self.clients)):
             if self.clients[i].addr == addr:
-                self.clients[i].is_connected = False
-                j = i
-        return f"{self.clients[j].name} has disconnected"
+                #self.clients[i].is_connected = False
+                client = self.clients[i]
+                #j = i
+        self.clients.remove(client)
+        return f"{client.name} has disconnected"
 
     def startChat(self):
         chatSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)

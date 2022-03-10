@@ -13,7 +13,7 @@ class Client:
         self.chatter = '' #Name of the person who wants to start a chat with the client
 
     def toString(self):
-        print(self.name + ' ' + self.ip + ' ' + self.port)
+        return f"{self.name}' '{self.ip}' '{self.port}"
 
     def isEqual(self, other):
         if self.name == other.name:

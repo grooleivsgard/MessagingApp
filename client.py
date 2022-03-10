@@ -29,6 +29,7 @@ def main():
             confirm = input(f"{initiateChat} wants to chat. Accept(a) or Decline(d):\n")
             if confirm == 'a':
                 print("You accepted the chat")
+                clientSocket.sendto("accepted".encode(FORMAT), (serverName, receivePort))
             else:
                 print("You declined the chat")
                 clientSocket.sendto("declined".encode(FORMAT), (serverName, receivePort))
@@ -45,6 +46,11 @@ def main():
             clientSocket.sendto(command.encode(FORMAT), (serverName, receivePort))
             recipientName = input("Type the name of the user you would like to chat with:\n")
             clientSocket.sendto(recipientName.encode(FORMAT), (serverName, receivePort))
+            confirm = clientSocket.recvfrom(1024)[0].decode(FORMAT)
+            if confirm == 'declined':
+                print("Your chat has been declined")
+            elif confirm == 'accepted':
+                print("Your chat has been accepted")
     clientSocket.close()
 
 main()
