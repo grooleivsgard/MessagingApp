@@ -96,14 +96,16 @@ class Server(threading.Thread):
         except socket.error as e:
             print(str(e))
         while True:
-            data, addr = chatSocket.recvfrom(1024) #Receive the address of the client the server is dealing with
-            for i in range(len(self.clients)):
-                if self.clients[i].initiateChat == True: #If someone wants to start a chat with them
-                    chatSocket.sendto("yes".encode(self.FORMAT), addr) #Let the client know (work in progress)
-                    break
-                elif self.clients[-1].initiateChat == False:
-                    chatSocket.sendto("NOCHAT".encode(self.FORMAT), addr) #Let the client know so they can continue as usual
-                    break
+            data, addr = chatSocket.recvfrom(1024) #Receive the address and name of the client the server is dealing with
+            clientName = data.decode(self.FORMAT)
+            client = Client('1', 1, "Null")
+            for j in range(len(self.clients)):
+                if clientName == self.clients[j].name:
+                    client = self.clients[j]
+            if client.initiateChat == True:
+                chatSocket.sendto(client.chatter.encode(self.FORMAT), addr) #Let the client know (work in progress)
+            else:
+                chatSocket.sendto("NOCHAT".encode(self.FORMAT), addr) #Let the client know so they can continue as usual
                 
 
 

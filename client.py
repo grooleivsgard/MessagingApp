@@ -3,11 +3,11 @@ import socket
 import threading
 from obj import Client
 
-def chat(msg): #Function to receive indication from the server if another clients wants to chat with them
+def startChat(msg): #Function to receive indication from the server if another clients wants to chat with them
     if msg == "NOCHAT":
-        return "hello" 
+        return False
     else:
-        return "Someone wants to chat"
+        return True
 
 def main():
     FORMAT = 'utf-8'
@@ -23,9 +23,10 @@ def main():
     print(clientSocket.recv(1024).decode(FORMAT)) #Print input menu
     prompt = ""
     while True:
-        chatSocket.sendto("hello".encode(FORMAT), (serverName, chatPort)) #Send the server the current client's address
+        chatSocket.sendto(name.encode(FORMAT), (serverName, chatPort)) #Send the server the current client's address
         initiateChat = chatSocket.recvfrom(1024)[0].decode(FORMAT) #Server checks if another client is trying to start a chat, sends back result
-        print(chat(initiateChat)) #(work in progress) If someones wants to chat - take to chat room, else - continue as usual
+        if startChat(initiateChat):
+            print(f"{initiateChat} wants to chat")
         command = input(prompt)
         if command == "q":
             clientSocket.sendto(command.encode(FORMAT), (serverName, receivePort))
