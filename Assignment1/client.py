@@ -1,50 +1,140 @@
 # CSC3002F Assignment 1: Client
 import socket
 import threading
+import os
+from time import sleep
 import hashlib
-import tkinter as tk
 
 
-def main():
-    FORMAT = 'utf-8'
-    serverName = "10.0.0.20"
-    registerPort = 12345
-    receivePort = 12346
-    displayPort = 12348
-    clientSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    name = input("Enter your name:\n")
-    clientSocket.sendto(name.encode(FORMAT), (serverName, registerPort))
-    print(clientSocket.recv(1024).decode(FORMAT))
-    while True:
-        command = input("\n")
-        if command == "Quit":
-            break
-        if command == "d":
-            clientSocket.sendto(command.encode(FORMAT), (serverName, displayPort))
-            clients = clientSocket.recv(1024)
-            clients = clients.decode(FORMAT)
-            print(clients)
-        else:
-            # Hash command and convert it to hexa
-            hashedCommand = hashlib.md5(b'{command}').hexdigest()
 
-            clientSocket.sendto(command.encode(FORMAT), (serverName, receivePort))
-            newMsg = clientSocket.recv(1024)
-            print(newMsg.decode(FORMAT))
+class Client(threading.Thread):
 
-            # Hash received message and convert it to hexa
-            hashedNewMsg = hashlib.md5(b'newMsg').hexdigest()
+    def __init__(self):
+        self.FORMAT = 'utf-8'
+        self.serverName = "10.0.0.20"
+        self.registerPort = 12345
+        self.receivePort = 12346
+        self.sendPort = 12347
+        # displayPort = 12348
+        self.disconnectPort = 12349
 
-            # Compare sent hash command and received new message
-            #  If the hashes are equivalent, no errors detected
-            #  If not, errors detected
+    def run(self):
+        self.lock = threading.Lock()  # creates a lock for the threads
+        inputThread = threading.Thread(target=self.input)  # Starts the thread that registers the clients on the server
+        inputThread.start()
 
-            if hashedCommand == hashedNewMsg:
-                print('\nNO ERRORS DETECTED')
+    def input(self):
+        self.clientSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        name = input("Enter your name:\n")
+        self.clientSocket.sendto(name.encode(self.FORMAT), (self.serverName, self.registerPort))
+
+        recvd = self.clientSocket.recv(1024).decode(self.FORMAT)
+        if recvd == "taken":
+            while recvd == "taken":
+                print("Username taken, please enter a new one")
+                name = input("Enter your name:\n")
+                self.clientSocket.sendto(name.encode(self.FORMAT), (self.serverName, self.registerPort))
+                recvd = self.clientSocket.recv(1024).decode(self.FORMAT)
+
+        print(recvd)
+
+        prompt = ""
+        listenThread = threading.Thread(
+            target=self.listen)  # Starts the thread that registers the clients on the server
+        listenThread.start()
+        while True:
+            command = input(prompt)  # checks for input from user
+            self.lock.acquire()  # attains the lock so that listen thread does not interrupt
+
+            if command == "MENU":  # displays options
+                print(
+                    "\nType 'd' to display online users\nType 'Send to' to select recipient\nType 'Create' to make a group\nType 'MENU' to view options\nType 'Quit' to exit\n")
+                self.lock.release()  # releases lock for listen thread to use
+
+            elif command == "Quit":  # exits the program
+                self.clientSocket.sendto(command.encode(self.FORMAT), (self.serverName, self.receivePort))
+                self.clientSocket.close()
+                os._exit(0)  # exits system
+
+            elif command == "d":  # displays active users
+                self.clientSocket.sendto(command.encode(self.FORMAT), (self.serverName, self.receivePort))
+                clients = self.clientSocket.recv(1024)
+                clients = clients.decode(self.FORMAT)
+
+                print(clients)
+                self.lock.release()
+
+            elif command == "Send to":  # sends message to user or group
+                print("\nType name of recipient or group")
+                recipients = input()
+
+                print("\nType message:")
+                message = "Send to;" + recipients + ":" + input()  # creates message for server to decipher
+                self.clientSocket.sendto(message.encode(self.FORMAT), (self.serverName, self.receivePort))
+                # Hash command and convert it to hexa
+                hashedSentMsg = hashlib.md5(b'{message}').hexdigest()
+
+                com = "get"
+                self.clientSocket.sendto(com.encode(self.FORMAT),
+                                         (self.serverName, self.receivePort))  # sends command to retrieve message sent
+                newmsg = self.clientSocket.recv(1024).decode(self.FORMAT)
+                # Hash received message and convert it to hexa
+                hashedRecvMsg = hashlib.md5(b'newmsg').hexdigest()
+
+                print(newmsg)
+                self.lock.release()
+
+                # Compare sent hash command and received new message
+                #  If the hashes are equivalent, no errors detected
+                #  If not, errors detected
+
+                if hashedSentMsg == hashedRecvMsg:
+                    update = "No errors detected in data transmission."
+                    self.clientSocket.sendto(update.encode(self.FORMAT), (self.serverName, self.receivePort))
+                else:
+                    update = "WARNING! Errors detected in data transmission!"
+                    self.clientSocket.sendto(update.encode(self.FORMAT), (self.serverName, self.receivePort))
+
+            elif command == "Create":
+                print("\nCreate a group name")
+                grpName = input()
+
+                print("\nType the names of members to add seperated by a ';'")
+                members = input()
+
+                message = "Create;" + members + ":" + grpName
+                self.clientSocket.sendto(message.encode(self.FORMAT), (self.serverName, self.receivePort))
+
+                newmsg = self.clientSocket.recv(2048).decode(self.FORMAT)
+                for i in range(len(newmsg)):
+                    if newmsg[i] == " ":
+                        if newmsg[0:i] == name:
+                            newmsg = name + " " + newmsg[i + 1:len(newmsg)]
+                        break
+
+                print("\n" + newmsg)
+                self.lock.release()
+
             else:
-                print('\nWARNING! ERRORS DETECTED')
+                print("Command does not exist")
+                self.lock.release()
 
-    clientSocket.close()
+        self.clientSocket.close()
+
+    # checks for new messages
+    def listen(self):
+        while True:
+            command = "get"
+            sleep(3)  # sleeps in case user inputs command
+            self.lock.acquire()  # acquires a lock to run without interuption
+
+            self.clientSocket.sendto(command.encode(self.FORMAT), (self.serverName, self.receivePort))
+            output = self.clientSocket.recv(2048).decode(self.FORMAT)
+
+            if output != "NONE":  # checks if there is any new messages, if there is, prints it
+                print("\n" + output)
+            self.lock.release()  # releases lock to allow user to enter a command
 
 
-main()
+client = Client()
+client.run()
