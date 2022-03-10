@@ -1,7 +1,8 @@
-#CSC3002F Assignment 1: Server
+#CSC3002F: Assingment 1 Server
 import socket
 import threading
 import queue
+from obj import Client
 
 class Server(threading.Thread):
 
@@ -10,15 +11,15 @@ class Server(threading.Thread):
         self.host = host
         self.registerPort = port1
         self.receivePort = port2
-        self.sendPort = port3
+        self.chatPort = port3
         self.FORMAT = 'utf-8'
-        self.MENU = "Press 'd' to display online users"
+        self.MENU = "ChatApp:\nQuit(q): Exit the app\nDisplay(d): Display online users\nChat(c): Open a chat with someone\n"
         self.clientsOnline = ""
         self.clients = [] #List of clients connected to the server as Client objects (see below)
         self.dataQueue = queue.Queue() #FIFO queue of data sent my clients
         self.recpQueue = queue.Queue() #FIFO queue of recipients where data should be sent
 
-    #Opens a socket and binds it to the IP and port number contained in the server object
+#Opens a socket and binds it to the IP and port number contained in the server object
     def run(self):
         print(f"[SERVER ACTIVE ON IP {self.host}] The Server is ready to receive...")
         for i in range(len(self.clients)):
@@ -27,10 +28,10 @@ class Server(threading.Thread):
         regThread.start()
         recvThread = threading.Thread(target=self.receive) #Start the thread which receives messages
         recvThread.start()
-        sendThread = threading.Thread(target=self.sendMsg) #Starts the thread which sends messages to clients
-        sendThread.start()
+        chatThread = threading.Thread(target=self.startChat) #Starts the thread which initiates a chat
+        chatThread.start()
 
-    #Registers the client's name and address (IP + port number)
+#Registers the client's name and address (IP + port number)
     def register(self):
         regSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         try:
@@ -39,10 +40,10 @@ class Server(threading.Thread):
             print(str(e))
         while True: #Wait for clients to register
             data, addr = regSocket.recvfrom(2048) #Receive the client's name 
-            client = Client(addr, data.decode(self.FORMAT)) #Creat a Client object from name and address
+            client = Client(addr[0], addr[1], data.decode(self.FORMAT)) #Creat a Client object from name and address
             client.is_connected = True
             self.clients.append(client) #Place the client in the Server's array
-            print(client.name + " is connected.")
+            print(client.name + " has connected.")
             regSocket.sendto(self.MENU.encode(self.FORMAT), addr)
     
     def displayClients(self):
@@ -65,24 +66,21 @@ class Server(threading.Thread):
             if command == 'd':
                 clients = self.displayClients()
                 recSocket.sendto(clients, addr)
-            elif command == 'Quit':
+            elif command == 'q':
                 print(self.onDisconnect(addr))
-            else:
-                self.dataQueue.put(command) #Places data on queue
-                self.recpQueue.put(addr) #Places repicient on queue
-
-    #Sends a message to a client (For now just returns to the client who sent it)
-    def sendMsg(self):
-        sendSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        try:
-            sendSocket.bind((self.host, self.sendPort))
-        except socket.error as e:
-            print(str(e))            
-        while True:
-            data = self.dataQueue.get() #Retrieve the data
-            addr = self.recpQueue.get() #Retrieve the recipient
-            message = f"You said: {data}" #Placeholder reply to show code executed correctly
-            sendSocket.sendto(message.encode(self.FORMAT), addr)
+            elif command == 'c': #Client wants to start chat
+                data, addr = recSocket.recvfrom(1024)
+                for j in range(len(self.clients)): #Find client initiating chat
+                    if addr == self.clients[j].addr:
+                        chatter = self.clients[j].name
+                        break
+                recipientName = data.decode(self.FORMAT)
+                for i in range(len(self.clients)): #Find the recipient
+                    if recipientName == self.clients[i].name:
+                        recipient = self.clients[i]
+                        recipient.initiateChat = True
+                        recipient.chatter = chatter
+                        break
 
     def onDisconnect(self, addr):
         for i in range(len(self.clients)):
@@ -91,13 +89,23 @@ class Server(threading.Thread):
                 j = i
         return f"{self.clients[j].name} has disconnected"
 
-class Client:
+    def startChat(self):
+        chatSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            chatSocket.bind((self.host, self.chatPort))
+        except socket.error as e:
+            print(str(e))
+        while True:
+            data, addr = chatSocket.recvfrom(1024) #Receive the address of the client the server is dealing with
+            for i in range(len(self.clients)):
+                if self.clients[i].initiateChat == True: #If someone wants to start a chat with them
+                    chatSocket.sendto("yes".encode(self.FORMAT), addr) #Let the client know (work in progress)
+                    break
+                elif self.clients[-1].initiateChat == False:
+                    chatSocket.sendto("NOCHAT".encode(self.FORMAT), addr) #Let the client know so they can continue as usual
+                    break
+                
 
-    def __init__(self, addr, name):
-        self.addr = addr
-        self.name = name
-        self.FORMAT = 'utf-8'
-        self.is_connected = False
 
-server = Server("192.168.0.106", 12345, 12346, 12347)
-server.run()
+server = Server("192.168.0.108", 12345, 12346, 12347)
+server.run()    

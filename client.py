@@ -1,22 +1,33 @@
-#CSC3002F Assignment 1: Client
+#CSC3002F Assignmnet 1 Client
 import socket
 import threading
-    
+from obj import Client
+
+def chat(msg): #Function to receive indication from the server if another clients wants to chat with them
+    if msg == "NOCHAT":
+        return "hello" 
+    else:
+        return "Someone wants to chat"
+
 def main():
     FORMAT = 'utf-8'
-    serverName = "192.168.0.106"
+    serverName = "192.168.0.108"
     registerPort = 12345
     receivePort = 12346
-    #displayPort = 12348
-    disconnectPort = 12349
+    chatPort = 12347
     clientSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    chatSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
     name = input("Enter your name:\n")
     clientSocket.sendto(name.encode(FORMAT), (serverName, registerPort))
-    print(clientSocket.recv(1024).decode(FORMAT))
+    print(clientSocket.recv(1024).decode(FORMAT)) #Print input menu
     prompt = ""
     while True:
+        chatSocket.sendto("hello".encode(FORMAT), (serverName, chatPort)) #Send the server the current client's address
+        initiateChat = chatSocket.recvfrom(1024)[0].decode(FORMAT) #Server checks if another client is trying to start a chat, sends back result
+        print(chat(initiateChat)) #(work in progress) If someones wants to chat - take to chat room, else - continue as usual
         command = input(prompt)
-        if command == "Quit":
+        if command == "q":
             clientSocket.sendto(command.encode(FORMAT), (serverName, receivePort))
             break
         elif command == "d":
@@ -24,10 +35,10 @@ def main():
             clients = clientSocket.recv(1024)
             clients = clients.decode(FORMAT)
             print(clients)
-        else:
+        elif command == 'c':
             clientSocket.sendto(command.encode(FORMAT), (serverName, receivePort))
-            newMsg = clientSocket.recv(1024)
-            print(newMsg.decode(FORMAT))
+            recipientName = input("Type the name of the user you would like to chat with:\n")
+            clientSocket.sendto(recipientName.encode(FORMAT), (serverName, receivePort))
     clientSocket.close()
-    
+
 main()
