@@ -7,11 +7,12 @@ from obj import Client
 class Server(threading.Thread):
 
     #Initialises the server object
-    def __init__(self, host, port1, port2, port3):
+    def __init__(self, host, port1, port2, port3, port4):
         self.host = host
         self.registerPort = port1
         self.receivePort = port2
-        self.chatPort = port3
+        self.startPort = port3
+        self.chatPort = port4
         self.FORMAT = 'utf-8'
         self.MENU = "ChatApp:\nQuit(q): Exit the app\nDisplay(d): Display online users\nChat(c): Open a chat with someone\n"
         self.clientsOnline = ""
@@ -28,7 +29,9 @@ class Server(threading.Thread):
         regThread.start()
         recvThread = threading.Thread(target=self.receive) #Start the thread which receives messages
         recvThread.start()
-        chatThread = threading.Thread(target=self.startChat) #Starts the thread which initiates a chat
+        startThread = threading.Thread(target=self.startChat) #Starts the thread which initiates a chat
+        startThread.start()
+        chatThread = threading.Thread(target=self.chat)
         chatThread.start()
 
 #Registers the client's name and address (IP + port number)
@@ -118,24 +121,57 @@ class Server(threading.Thread):
         return f"{client.name} has disconnected"
 
     def startChat(self):
-        chatSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        startSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         try:
-            chatSocket.bind((self.host, self.chatPort))
+            startSocket.bind((self.host, self.startPort))
         except socket.error as e:
             print(str(e))
         while True:
-            data, addr = chatSocket.recvfrom(1024) #Receive the address and name of the client the server is dealing with
+            data, addr = startSocket.recvfrom(1024) #Receive the address and name of the client the server is dealing with
             clientName = data.decode(self.FORMAT)
             client = Client('1', 1, "Null")
             for j in range(len(self.clients)):
                 if clientName == self.clients[j].name:
                     client = self.clients[j]
             if client.initiateChat == True:
-                chatSocket.sendto(client.chatter.encode(self.FORMAT), addr) #Let the client know (work in progress)
+                startSocket.sendto(client.chatter.encode(self.FORMAT), addr) #Let the client know (work in progress)
             else:
-                chatSocket.sendto("NOCHAT".encode(self.FORMAT), addr) #Let the client know so they can continue as usual
-                
+                startSocket.sendto("NOCHAT".encode(self.FORMAT), addr) #Let the client know so they can continue as usual
+
+    def chat(self):
+        chatSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            chatSocket.bind((self.host, self.chatPort))
+        except socket.error as e:
+            print(str(e))
+        clientsChatting = []
+        while True:
+            while len(clientsChatting) < 2:
+                data, addr = chatSocket.recvfrom(1024)
+                for i in range(len(self.clients)):
+                    if data.decode(self.FORMAT) == self.clients[i].name:
+                        clientsChatting.append(self.clients[i])
+            while len(clientsChatting) == 2:
+                data, addr = chatSocket.recvfrom(2048)
+                command = data.decode(self.FORMAT)
+                senderName = ''
+                for i in range(2):
+                    if clientsChatting[i].addr == addr:
+                        senderName = clientsChatting[i].name
+                for i in range(2):
+                    if clientsChatting[i].addr != addr:
+                        if command == '!q':
+                            chatSocket.sendto("Your recpient has disconnected".encode(self.FORMAT), clientsChatting[i].addr)
+                            clientsChatting = []
+                            break
+                        elif command != '':
+                            message = data.decode(self.FORMAT)
+                            message = f"{senderName} said: {message}"
+                            chatSocket.sendto(message.encode(self.FORMAT), clientsChatting[i].addr)
 
 
-server = Server("192.168.0.108", 12345, 12346, 12347)
+        
+
+
+server = Server("192.168.0.108", 12345, 12346, 12347, 12348)
 server.run()    
