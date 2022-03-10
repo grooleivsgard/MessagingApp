@@ -68,6 +68,10 @@ class Server(threading.Thread):
                 recSocket.sendto(clients, addr)
             elif command == 'q':
                 print(self.onDisconnect(addr))
+            elif command == 'declined': #Client declines chat
+                for i in range(len(self.clients)):
+                    if self.clients[i].addr == addr:
+                        self.clients[i].initiateChat = False
             elif command == 'c': #Client wants to start chat
                 data, addr = recSocket.recvfrom(1024)
                 for j in range(len(self.clients)): #Find client initiating chat

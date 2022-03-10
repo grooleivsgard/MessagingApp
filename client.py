@@ -26,7 +26,12 @@ def main():
         chatSocket.sendto(name.encode(FORMAT), (serverName, chatPort)) #Send the server the current client's address
         initiateChat = chatSocket.recvfrom(1024)[0].decode(FORMAT) #Server checks if another client is trying to start a chat, sends back result
         if startChat(initiateChat):
-            print(f"{initiateChat} wants to chat")
+            confirm = input(f"{initiateChat} wants to chat. Accept(a) or Decline(d):\n")
+            if confirm == 'a':
+                print("You accepted the chat")
+            else:
+                print("You declined the chat")
+                clientSocket.sendto("declined".encode(FORMAT), (serverName, receivePort))
         command = input(prompt)
         if command == "q":
             clientSocket.sendto(command.encode(FORMAT), (serverName, receivePort))
